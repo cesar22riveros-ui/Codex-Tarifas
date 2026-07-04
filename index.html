@@ -31,11 +31,13 @@
     body{min-height:100vh}
     .app{max-width:1200px;margin:0 auto;padding:16px 16px 48px}
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+    .top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
     .brand{display:flex;align-items:center;gap:12px}
     .logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,var(--primary),var(--primary-2));display:grid;place-items:center;color:white;font-weight:800;box-shadow:var(--shadow)}
     h1{font-size:clamp(1.4rem,2vw,2.1rem);margin:0}
     .sub{color:var(--muted);font-size:.95rem;margin-top:4px}
     .toggle{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 14px;color:var(--text)}
+    .primary-action{border:1px solid var(--primary);background:var(--primary);border-radius:14px;padding:12px 14px;color:white;font-size:1rem;font-weight:700}
     .grid{display:grid;grid-template-columns:1.05fr 1.25fr;gap:16px}
     .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
     .card h2{font-size:1rem;margin:0 0 12px}
@@ -60,8 +62,20 @@
     .section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px}
     .badge{font-size:.78rem;color:var(--primary);background:rgba(1,105,111,.08);padding:8px 10px;border-radius:999px;border:1px solid rgba(1,105,111,.18)}
     .footer-note{margin-top:12px;color:var(--muted);font-size:.82rem}
+    .route-settings{margin-top:16px}
+    .route-settings[hidden]{display:none}
+    .route-form{align-items:end}
+    .actions-field{justify-content:flex-end}
+    .route-message{min-height:22px;margin-top:10px;color:var(--muted);font-size:.86rem}
+    .route-message.ok{color:var(--success);font-weight:700}
+    .route-message.warn{color:var(--warn);font-weight:700}
+    .routes-list{display:grid;gap:8px;margin-top:10px}
+    .route-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+    .route-row strong{display:block;font-size:.9rem}
+    .route-row span{display:block;color:var(--muted);font-size:.8rem;margin-top:2px}
+    .route-row button{border:1px solid var(--line);background:var(--surface);border-radius:999px;color:var(--text);padding:8px 10px}
     @media (max-width: 900px){.grid{grid-template-columns:1fr}.fields{grid-template-columns:1fr}.strip{grid-template-columns:1fr 1fr}.kpis{grid-template-columns:1fr 1fr}}
-    @media (max-width: 560px){.app{padding:12px 12px 36px}.kpis{grid-template-columns:1fr}.strip{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}}
+    @media (max-width: 560px){.app{padding:12px 12px 36px}.kpis{grid-template-columns:1fr}.strip{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}.top-actions{justify-content:flex-start}.route-row{grid-template-columns:1fr}.route-row button{width:100%}}
   </style>
 </head>
 <body>
@@ -74,7 +88,10 @@
           <div class="sub">Con selección de salida y destino, costos automáticos por km y minuto.</div>
         </div>
       </div>
-      <button class="toggle" id="themeBtn" aria-label="Cambiar tema">🌙 Tema</button>
+      <div class="top-actions">
+        <button class="toggle" id="settingsBtn" type="button" aria-expanded="false">Configurar rutas</button>
+        <button class="toggle" id="themeBtn" aria-label="Cambiar tema">🌙 Tema</button>
+      </div>
     </div>
 
     <div class="grid">
@@ -167,15 +184,55 @@
         <div class="footer-note" id="footerNote"></div>
       </section>
     </div>
+
+    <section class="card route-settings" id="routeSettings" hidden>
+      <div class="section-title">
+        <h2>Configuración de rutas</h2>
+        <div class="badge" id="customRoutesCount">0 rutas nuevas</div>
+      </div>
+      <div class="fields route-form">
+        <div class="field">
+          <label for="routeType">Tipo de nueva ruta</label>
+          <select id="routeType">
+            <option value="branch">Ramal o desviación</option>
+            <option value="linear">Ruta lineal principal</option>
+          </select>
+          <div class="hint">Un ramal sale desde un punto existente. Una ruta lineal se agrega después del punto elegido.</div>
+        </div>
+        <div class="field">
+          <label for="routeFrom">Desde</label>
+          <select id="routeFrom"></select>
+        </div>
+        <div class="field">
+          <label for="routeName">Nombre del nuevo destino o ruta</label>
+          <input id="routeName" type="text" placeholder="Ej: Santa Elena">
+        </div>
+        <div class="field">
+          <label for="routeKm">Kilómetros</label>
+          <input id="routeKm" type="number" min="0.1" step="0.1" placeholder="Ej: 1.7">
+        </div>
+        <div class="field">
+          <label for="routeMin">Tiempo en minutos</label>
+          <input id="routeMin" type="number" min="1" step="1" placeholder="Ej: 2">
+        </div>
+        <div class="field actions-field">
+          <button class="primary-action" id="addRouteBtn" type="button">Agregar ruta</button>
+        </div>
+      </div>
+      <div class="route-message" id="routeMessage" role="status"></div>
+      <div class="routes-list" id="customRoutesList"></div>
+    </section>
   </div>
 
   <script>
-    const points = [
+    const ROUTES_STORAGE_KEY = 'simulador-tarifas-rutas';
+
+    const basePoints = [
       'Las Cabras','La Esperanza','La Rosa','Rosario Río','Códao','Santa Elena',
       'Pichidegua','Concha y Toro','Sofruco','Peumo','Tunca Abajo','San Vicente (Plaza)'
     ];
 
-    const routeSegments = [
+    const baseRouteSegments = [
       ['Las Cabras', 'La Esperanza', 5.4, 8],
       ['La Esperanza', 'La Rosa', 9.7, 10],
       ['La Rosa', 'Rosario Río', 3.0, 3],
@@ -189,17 +246,54 @@
       ['Santa Elena', 'Pichidegua', 7.5, 11]
     ];
 
-    const graph = routeSegments.reduce((map, [from, to, km, min]) => {
-      map[from] = map[from] || [];
-      map[to] = map[to] || [];
-      map[from].push({to, km, min});
-      map[to].push({to: from, km, min});
-      return map;
-    }, {});
+    let customRouteSegments = loadCustomRoutes();
+    let points = [];
+    let routeSegments = [];
+    let graph = {};
 
     const $ = id => document.getElementById(id);
     const money = n => '$' + Math.round(n).toLocaleString('es-CL');
     const num = id => Number($(id).value || 0);
+
+    function loadCustomRoutes(){
+      try{
+        const saved = JSON.parse(localStorage.getItem(ROUTES_STORAGE_KEY) || '[]');
+        return Array.isArray(saved) ? saved.filter(route => route.from && route.to && route.km > 0 && route.min > 0) : [];
+      }catch{
+        return [];
+      }
+    }
+
+    function saveCustomRoutes(){
+      localStorage.setItem(ROUTES_STORAGE_KEY, JSON.stringify(customRouteSegments));
+    }
+
+    function rebuildRoutes(){
+      const names = [...basePoints];
+      customRouteSegments.forEach(route => {
+        if(!names.includes(route.to)){
+          if(route.type === 'linear'){
+            const afterIndex = names.indexOf(route.from);
+            names.splice(afterIndex >= 0 ? afterIndex + 1 : names.length, 0, route.to);
+          }else{
+            names.push(route.to);
+          }
+        }
+      });
+
+      points = names;
+      routeSegments = [
+        ...baseRouteSegments.map(([from, to, km, min]) => ({from, to, km, min, type:'base'})),
+        ...customRouteSegments
+      ];
+      graph = routeSegments.reduce((map, route) => {
+        map[route.from] = map[route.from] || [];
+        map[route.to] = map[route.to] || [];
+        map[route.from].push({to: route.to, km: route.km, min: route.min});
+        map[route.to].push({to: route.from, km: route.km, min: route.min});
+        return map;
+      }, {});
+    }
 
     function fillSelect(id, allowNone=false){
       const el = $(id);
@@ -207,6 +301,24 @@
       points.forEach(p => {
         const o = document.createElement('option');
         o.value = p; o.textContent = p; el.appendChild(o);
+      });
+    }
+
+    function refreshSelects(){
+      const values = {
+        origen: $('origen').value,
+        destino: $('destino').value,
+        pickup: $('pickup').value,
+        routeFrom: $('routeFrom').value
+      };
+
+      fillSelect('origen');
+      fillSelect('destino');
+      fillSelect('pickup', true);
+      fillSelect('routeFrom');
+
+      ['origen','destino','pickup','routeFrom'].forEach(id => {
+        if(values[id] && points.includes(values[id])) $(id).value = values[id];
       });
     }
 
@@ -297,7 +409,66 @@
       $('desglose').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
     }
 
-    fillSelect('origen'); fillSelect('destino'); fillSelect('pickup', true);
+    function setRouteMessage(text, type=''){
+      const el = $('routeMessage');
+      el.textContent = text;
+      el.className = `route-message ${type}`.trim();
+    }
+
+    function renderCustomRoutes(){
+      $('customRoutesCount').textContent = `${customRouteSegments.length} rutas nuevas`;
+      $('customRoutesList').innerHTML = customRouteSegments.length
+        ? customRouteSegments.map((route, index) => `
+          <div class="route-row">
+            <div>
+              <strong>${route.from} → ${route.to}</strong>
+              <span>${route.km.toFixed(1).replace('.', ',')} km · ${Math.round(route.min)} min · ${route.type === 'linear' ? 'ruta lineal' : 'ramal'}</span>
+            </div>
+            <button type="button" data-delete-route="${index}">Eliminar</button>
+          </div>
+        `).join('')
+        : '<div class="hint">Las rutas nuevas que agregues en este dispositivo aparecerán aquí.</div>';
+    }
+
+    function addCustomRoute(){
+      const from = $('routeFrom').value;
+      const to = $('routeName').value.trim();
+      const km = Number($('routeKm').value);
+      const min = Number($('routeMin').value);
+      const type = $('routeType').value;
+
+      if(!from || !to || !Number.isFinite(km) || !Number.isFinite(min) || km <= 0 || min <= 0){
+        setRouteMessage('Completa el punto de salida, nombre, kilómetros y minutos.', 'warn');
+        return;
+      }
+      if(from === to){
+        setRouteMessage('El destino nuevo debe ser distinto al punto de salida.', 'warn');
+        return;
+      }
+
+      const repeated = routeSegments.some(route =>
+        (route.from === from && route.to === to) || (route.from === to && route.to === from)
+      );
+      if(repeated){
+        setRouteMessage('Ese tramo ya existe. Elimina el duplicado o usa otro nombre.', 'warn');
+        return;
+      }
+
+      customRouteSegments.push({from, to, km, min, type});
+      saveCustomRoutes();
+      rebuildRoutes();
+      refreshSelects();
+      $('destino').value = to;
+      $('routeName').value = '';
+      $('routeKm').value = '';
+      $('routeMin').value = '';
+      renderCustomRoutes();
+      update();
+      setRouteMessage(`Ruta agregada: ${from} → ${to}.`, 'ok');
+    }
+
+    rebuildRoutes();
+    refreshSelects();
     $('origen').value = 'Rosario Río';
     $('destino').value = 'San Vicente (Plaza)';
     $('pickup').value = '';
@@ -307,6 +478,27 @@
       .forEach(id => $(id).addEventListener('input', update));
 
     const themeBtn = $('themeBtn');
+    const settingsBtn = $('settingsBtn');
+    const routeSettings = $('routeSettings');
+    settingsBtn.addEventListener('click', () => {
+      routeSettings.hidden = !routeSettings.hidden;
+      settingsBtn.setAttribute('aria-expanded', String(!routeSettings.hidden));
+    });
+    $('addRouteBtn').addEventListener('click', addCustomRoute);
+    $('customRoutesList').addEventListener('click', event => {
+      const button = event.target.closest('[data-delete-route]');
+      if(!button) return;
+      const index = Number(button.dataset.deleteRoute);
+      const [removed] = customRouteSegments.splice(index, 1);
+      saveCustomRoutes();
+      rebuildRoutes();
+      refreshSelects();
+      renderCustomRoutes();
+      update();
+      setRouteMessage(removed ? `Ruta eliminada: ${removed.from} → ${removed.to}.` : '', removed ? 'ok' : '');
+    });
+    renderCustomRoutes();
+
     function setTheme(mode){
       document.documentElement.setAttribute('data-theme', mode);
       themeBtn.textContent = mode === 'dark' ? '☀️ Tema' : '🌙 Tema';
